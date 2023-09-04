@@ -8,8 +8,46 @@ local LrApplication = import 'LrApplication'
 local LrExportSession = import 'LrExportSession'
 local LrTasks = import 'LrTasks'
 
+local LrLogger = import 'LrLogger'
+local myLogger = LrLogger( 'exportLogger' )
+myLogger:enable( "print" )
+
+local function outputToLog( message )
+	myLogger:trace( message )
+end
+
+local function getHome()
+	local fh,err = assert(io.popen("echo $HOME 2>/dev/null","r"))
+	if fh then
+		home = fh:read()
+	end
+
+	return home or ""
+end 
+
+function getOS()
+	-- ask LuaJIT first
+	if jit then
+		return jit.os
+	end
+
+	-- Unix, Linux variants
+	local fh,err = assert(io.popen("uname -o 2>/dev/null","r"))
+	if fh then
+		osname = fh:read()
+	end
+
+	if osname == "Darwin" then 
+		return "MacOS"
+	end
+	
+	return osname or "Windows"
+end
+
+local operatingSystem = getOS()
+
 -- Process pictures and save them as JPEG
-local function processPhotos(photos, outputFolder)
+local function processPhotos(photos, outputFolder, size)
 	LrFunctionContext.callWithContext("export", function(exportContext)
 
 		local progressScope = LrDialogs.showModalProgressDialog({
@@ -19,31 +57,61 @@ local function processPhotos(photos, outputFolder)
 			functionContext = exportContext
 		})
 
-		local exportSession = LrExportSession({
-			photosToExport = photos,
-			exportSettings = {
-				LR_collisionHandling = "rename",
-				LR_export_bitDepth = "8",
-				LR_export_colorSpace = "sRGB",
-				LR_export_destinationPathPrefix = outputFolder,
-				LR_export_destinationType = "specificFolder",
-				LR_export_useSubfolder = false,
-				LR_format = "JPEG",
-				LR_jpeg_quality = 1,
-				LR_minimizeEmbeddedMetadata = true,
-				LR_outputSharpeningOn = false,
-				LR_reimportExportedPhoto = false,
-				LR_renamingTokensOn = true,
-				LR_size_doConstrain = true,
-				LR_size_doNotEnlarge = true,
-				LR_size_maxHeight = 2000,
-				LR_size_maxWidth = 2000,
-				LR_size_resolution = 72,
-				LR_size_units = "pixels",
-				LR_tokens = "{{image_name}}",
-				LR_useWatermark = false,
-			}
-		})
+		if size == "2000px" then
+			exportSession = LrExportSession({
+				photosToExport = photos,
+				exportSettings = {
+					LR_collisionHandling = "rename",
+					LR_export_bitDepth = "8",
+					LR_export_colorSpace = "sRGB",
+					LR_export_destinationPathPrefix = outputFolder,
+					LR_export_destinationType = "specificFolder",
+					LR_export_useSubfolder = false,
+					LR_format = "JPEG",
+					LR_jpeg_quality = 1,
+					LR_minimizeEmbeddedMetadata = true,
+					LR_outputSharpeningOn = false,
+					LR_reimportExportedPhoto = false,
+					LR_renamingTokensOn = true,
+					LR_size_doConstrain = true,
+					LR_size_doNotEnlarge = true,
+					LR_size_maxHeight = 2000,
+					LR_size_maxWidth = 2000,
+					LR_size_resolution = 72,
+					LR_size_units = "pixels",
+					LR_tokens = "{{image_name}}",
+					LR_useWatermark = false,
+				}
+			})
+		else
+			exportSession = LrExportSession({
+				photosToExport = photos,
+				exportSettings = {
+					LR_collisionHandling = "rename",
+					LR_export_bitDepth = "8",
+					LR_export_colorSpace = "sRGB",
+					LR_export_destinationPathPrefix = outputFolder,
+					LR_export_destinationType = "specificFolder",
+					LR_export_useSubfolder = false,
+					LR_format = "JPEG",
+					LR_jpeg_quality = 1,
+					LR_minimizeEmbeddedMetadata = true,
+					LR_outputSharpeningOn = false,
+					LR_reimportExportedPhoto = false,
+					LR_renamingTokensOn = true,
+					-- LR_size_doConstrain = true,
+					LR_size_doNotEnlarge = true,
+					-- LR_size_maxHeight = 2000,
+					-- LR_size_maxWidth = 2000,
+					-- LR_size_resolution = 72,
+					LR_size_units = "pixels",
+					LR_tokens = "{{image_name}}",
+					LR_useWatermark = false,
+				}
+			})
+		end
+
+
 
 		local numPhotos = exportSession:countRenditions()
 
@@ -72,7 +140,7 @@ local function processPhotos(photos, outputFolder)
 end
 
 -- Import pictures from folder where the rating is not 2 stars 
-local function importFolder(LrCatalog, folder, outputFolder)
+local function importFolder(LrCatalog, folder, outputFolder, size)
 	local presetFolders = LrApplication.developPresetFolders()
 	local presetFolder = presetFolders[1]
 	local presets = presetFolder:getDevelopPresets()
@@ -93,7 +161,7 @@ local function importFolder(LrCatalog, folder, outputFolder)
 		end
 
 		if #export > 0 then
-			processPhotos(export, outputFolder)
+			processPhotos(export, outputFolder, size)
 		end
 	end)
 end
@@ -105,9 +173,15 @@ local function customPicker()
 		local props = LrBinding.makePropertyTable(context)
 		local f = LrView.osFactory()
 
+		local operatingSystem = getOS()
+		local operatingSystemValue = f:static_text {
+			title = operatingSystem
+		}
+
 		local outputFolderField = f:edit_field {
 			immediate = true,
-			value = "D:\\Pictures"
+			width = 500,
+			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or getHome() .. "/Pictures" 
 		}
 
 		local staticTextValue = f:static_text {
@@ -133,18 +207,33 @@ local function customPicker()
 				items = folderCombo
 			}
 
+			local sizeField = f:combo_box {
+				items = {"2000px", "original"},
+				value = "2000px"
+			}
+
+			local intervalField = f:combo_box {
+				items = {"3", "15", "30", "60"},
+				value = "3",
+				width_in_digits = 3
+			}
+
 			local watcherRunning = false
 
-			-- Watcher, executes function and then sleeps 60 seconds using PowerShell
-			local function watch()
+			-- Watcher, executes function and then sleeps x seconds using PowerShell
+			local function watch(interval)
 				LrTasks.startAsyncTask(function()
 					while watcherRunning do
 						LrDialogs.showBezel("Processing images.")
-						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value)
+						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value)
 						if LrTasks.canYield() then
 							LrTasks.yield()
 						end
-						LrTasks.execute("powershell Start-Sleep -Seconds 3")
+						if operatingSystem == "Windows" then
+							LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
+						else
+							LrTasks.execute("sleep " .. interval)
+						end
 					end
 				end)
 			end
@@ -158,15 +247,15 @@ local function customPicker()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Watcher running: "
+						title = "Operating system: "
 					},
-					staticTextValue,
+					operatingSystemValue,
 				},
 				f:row {
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Select folder: "
+						title = "Select Lightroom Folder: "
 					},
 					folderField
 				},
@@ -174,31 +263,60 @@ local function customPicker()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Output folder: "
+						title = "Size: "
+					},
+					sizeField
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "Interval (second): ",
+					},
+					intervalField
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "Output Folder: "
 					},
 					outputFolderField
 				},
 				f:row {
+					f:separator {
+						fill_horizontal = 1
+					}
+				},
+				f:row {
+					fill_horizontal = 1,
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "Watcher running: "
+					},
+					staticTextValue,
+				},
+				f:row {
 					f:push_button {
 						title = "Process once",
-
-						action = function()
+						action = function()					
 							if folderField.value ~= "" then
 								props.myObservedString = "Processed once"
-								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value)
+								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
 						end
 					},
 					f:push_button {
-						title = "Watch every 3s",
+						title = "Watch interval",
 
 						action = function()
 							watcherRunning = true
 							if folderField.value ~= "" then
 								props.myObservedString = "Running"
-								watch()
+								watch(intervalField.value)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
