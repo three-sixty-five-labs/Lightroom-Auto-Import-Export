@@ -57,7 +57,7 @@ local function processPhotos(photos, outputFolder, size)
 			functionContext = exportContext
 		})
 
-		if size == "2000px" then
+		if size == "3000px" then
 			exportSession = LrExportSession({
 				photosToExport = photos,
 				exportSettings = {
@@ -68,16 +68,16 @@ local function processPhotos(photos, outputFolder, size)
 					LR_export_destinationType = "specificFolder",
 					LR_export_useSubfolder = false,
 					LR_format = "JPEG",
-					LR_jpeg_quality = 1,
+					LR_jpeg_quality = 10,
 					LR_minimizeEmbeddedMetadata = true,
 					LR_outputSharpeningOn = false,
 					LR_reimportExportedPhoto = false,
 					LR_renamingTokensOn = true,
 					LR_size_doConstrain = true,
 					LR_size_doNotEnlarge = true,
-					LR_size_maxHeight = 2000,
-					LR_size_maxWidth = 2000,
-					LR_size_resolution = 72,
+					LR_size_maxHeight = 3000,
+					LR_size_maxWidth = 3000,
+					LR_size_resolution = 300,
 					LR_size_units = "pixels",
 					LR_tokens = "{{image_name}}",
 					LR_useWatermark = false,
@@ -94,16 +94,16 @@ local function processPhotos(photos, outputFolder, size)
 					LR_export_destinationType = "specificFolder",
 					LR_export_useSubfolder = false,
 					LR_format = "JPEG",
-					LR_jpeg_quality = 1,
+					LR_jpeg_quality = 10,
 					LR_minimizeEmbeddedMetadata = true,
 					LR_outputSharpeningOn = false,
 					LR_reimportExportedPhoto = false,
 					LR_renamingTokensOn = true,
 					-- LR_size_doConstrain = true,
 					LR_size_doNotEnlarge = true,
-					-- LR_size_maxHeight = 2000,
-					-- LR_size_maxWidth = 2000,
-					-- LR_size_resolution = 72,
+					-- LR_size_maxHeight = 3000,
+					-- LR_size_maxWidth = 3000,
+					-- LR_size_resolution = 300,
 					LR_size_units = "pixels",
 					LR_tokens = "{{image_name}}",
 					LR_useWatermark = false,
@@ -208,12 +208,12 @@ local function customPicker()
 			}
 
 			local sizeField = f:combo_box {
-				items = {"2000px", "original"},
-				value = "2000px"
+				items = {"3000px", "original"},
+				value = "3000px"
 			}
 
 			local intervalField = f:combo_box {
-				items = {"3", "15", "30", "60"},
+				items = {"3", "15", "30", "60", "90"},
 				value = "3",
 				width_in_digits = 3
 			}
@@ -334,7 +334,7 @@ local function customPicker()
 			}
 
 			LrDialogs.presentModalDialog {
-				title = "Auto Export resize2000px Watcher",
+				title = "Auto Export resize3000px Watcher",
 				contents = c,
 				-- Preferrably cancel should stop the script 
 				-- OK can be changed to run in background
